@@ -1,6 +1,8 @@
+import json
 import os
 import re
 import sys
+from pathlib import Path
 
 
 def replace_invalid_characters(name):
@@ -60,16 +62,48 @@ def process_and_rename_files(path):
                 print(f"File not found: {full_path}")
 
 
-def main():
-    # exeと同じフォルダのパスを取得
-    if getattr(sys, "frozen", False):
-        # PyInstallerでexe化された場合
-        folder_path = os.path.dirname(sys.executable)
-    else:
-        # 通常のPythonスクリプトとして実行された場合
-        folder_path = os.path.dirname(os.path.abspath(__file__))
+def get_config_path():
+    """設定ファイルのパスを取得"""
+    appdata = os.getenv("APPDATA")
+    if appdata is None:
+        # APPDATAが設定されていない場合はカレントディレクトリを使用
+        appdata = os.getcwd()
+    config_dir = Path(appdata) / "name-shrinker"
+    config_dir.mkdir(exist_ok=True)
+    return config_dir / "config.json"
 
-    print(f"処理対象フォルダ: {folder_path}")
+
+def load_config():
+    """設定を読み込む"""
+    config_path = get_config_path()
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+
+def main():
+    """CLIモードのメイン関数"""
+    # 設定ファイルから対象フォルダを読み込む
+    config = load_config()
+    target_folder = config.get("target_folder")
+
+    if target_folder and os.path.exists(target_folder):
+        folder_path = target_folder
+        print(f"設定ファイルから読み込んだ処理対象フォルダ: {folder_path}")
+    else:
+        # 設定がない場合は従来通りexeと同じフォルダを使用
+        if getattr(sys, "frozen", False):
+            # PyInstallerでexe化された場合
+            folder_path = os.path.dirname(sys.executable)
+        else:
+            # 通常のPythonスクリプトとして実行された場合
+            folder_path = os.path.dirname(os.path.abspath(__file__))
+        print(f"処理対象フォルダ: {folder_path}")
+
     print("ファイル名の処理を開始します...\n")
 
     # ファイル名の処理とリネームを実行
@@ -80,4 +114,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # --cli オプションがある場合のみCLIモードで起動
+    # それ以外はデフォルトでGUIモードで起動
+    if "--cli" in sys.argv:
+        main()
+    else:
+        try:
+            from gui import main as gui_main
+
+            gui_main()
+        except ImportError:
+            # GUIモジュールがインポートできない場合はCLIモードで実行
+            main()

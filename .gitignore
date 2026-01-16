@@ -9,3 +9,25 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Build artifacts
+installer/
+*.exe
+
+# Environment files
+.python-version
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Linter and formatter caches
+.ruff_cache/
+.pytest_cache/
